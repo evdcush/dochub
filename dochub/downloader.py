@@ -115,13 +115,13 @@ sample_arx = '1706.03762'
 sample_doi = '10.1038/nature16961'
 sample_doi_whale = '10.1016/j.advengsoft.2016.01.008'
 
-def download(pub_id):
+def download(pub_id, fname):
     sid = scrub_arx_id(pub_id)
     if len(sid.split('.')[0]) == 4:
         # arx ids always begin YYMM
-        arx_download(sid)
+        arx_download(sid, fname)
     else:
-        doi_download(pub_id)
+        doi_download(pub_id, fname)
 
 if __name__ == '__main__':
     pub_id = sys.argv[1]

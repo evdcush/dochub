@@ -1,20 +1,15 @@
+import code
 import fire
 import requests
 import pyperclip
 import feedparser
+from slugify import slugify
 
 from documents import make_bib
 from conf import SS_API_URL, ARX_API_URL, DOI_URL
-from utils import scrub_arx_id
+from utils import scrub_arx_id, is_arxiv_id
 
 
-
-# Arxiv processing stuff
-# ======================
-def is_arxiv_id(stripped_id):
-    """ arx IDs always have 4 leading digits """
-    pre = stripped_id.split('.')[0]
-    return len(pre) == 4
 
 #-----------------------------------------------------------------------------#
 #                                    Arxiv                                    #
@@ -99,32 +94,34 @@ def parse_ss(res):
         info['url'] = DOI_URL + res['doi']
     return info
 
+def format_filename(info):
+    #code.interact(local=dict(globals(), **locals()))
+    fname = info['identifier'] + '__' + slugify(info['title'])
+    return fname
+
+#-----------------------------------------------------------------------------#
+#                                  Wrappers                                   #
+#-----------------------------------------------------------------------------#
 
 def arxq(arxid):
     res = arx_query(arxid)
     pub_info = parse_arx(res)
-    #arx_bib  = make_bib_dynamic(pub_info)
-    #arx_bib = make_bib(pub_info)
-    #print(arx_bib)
-    #pyperclip.copy(arx_bib)
     return pub_info
 
 def sscholarq(doi):
     res = semscholar_query(doi)
     pub_info = parse_ss(res)
     return pub_info
-    #ss_bib = make_bib(pub_info)
-    #print(ss_bib)
 
-def query(pub_id):
+def query(pub_id, bib=True):
     sid = scrub_arx_id(pub_id)
-    if is_arxiv_id(sid):
-        info = arxq(sid)
-    else:
-        info = sscholarq(pub_id)
-    bib = make_bib(info)
-    print(bib)
-    pyperclip.copy(bib)
+    info = arxq(sid) if is_arxiv_id(sid) else sscholarq(pub_id)
+    info['filename'] = format_filename(info)
+    if bib:
+        bib = make_bib(info)
+        print(bib)
+        pyperclip.copy(bib)
+    return info
 
 doi_samp = "10.1038/nature16961"
 arx_samp = "https://arxiv.org/abs/1706.03762"
