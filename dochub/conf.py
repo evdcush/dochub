@@ -1,3 +1,20 @@
+import os
+import sys
+
+#-----------------------------------------------------------------------------#
+#                                    Paths                                    #
+#-----------------------------------------------------------------------------#
+# Directory paths
+# ===============
+_DOCHUB_PATH = os.path.abspath(os.path.dirname(__file__))
+PROJECT_ROOT = "/".join(_DOCHUB_PATH.split('/')[:-1])
+LIT_PATH   = f"{PROJECT_ROOT}/Literature"
+NOTES_PATH = f"{PROJECT_ROOT}/Notes"
+
+# File paths
+# ----------
+LIT_INBOX = f"{LIT_PATH}/inbox.yml"
+LIT_BIB   = f"{LIT_PATH}/library.yml"
 
 
 # API urls

@@ -1,7 +1,6 @@
+import code
 from utils import is_arxiv_id, scrub_arx_id
 from collections import OrderedDict
-
-import code
 
 #-----------------------------------------------------------------------------#
 #                                Bibliography                                 #
