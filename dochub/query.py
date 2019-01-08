@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import code
 import fire
 import requests
@@ -5,15 +6,20 @@ import pyperclip
 import feedparser
 from slugify import slugify
 
-from documents import make_bib
-from conf import SS_API_URL, ARX_API_URL, DOI_URL
-from utils import scrub_arx_id, is_arxiv_id
+from utils import SS_API_URL, ARX_API_URL, DOI_URL, scrub_arx_id, is_arxiv_id
 
 
 
 #-----------------------------------------------------------------------------#
 #                                    Arxiv                                    #
 #-----------------------------------------------------------------------------#
+def ss_keyword_query(arx_id):
+    #'https://api.semanticscholar.org/v1/paper/'
+    req_url = f"{SS_API_URL}arXiv:{arx_id}"
+    response = requests.get(req_url)
+    result = response.json()
+    kw = [topic['topic'] for topic in result['topics']]
+    return kw
 
 # Querying
 # ========
@@ -32,6 +38,7 @@ def arx_query(raw_arx_id):
     result = response['entries'][0]
     return result
 
+
 def parse_arx(res):
     # Get all relevant info
     # ---------------------
@@ -48,18 +55,19 @@ def parse_arx(res):
     url_pdf = f"http://arxiv.org/pdf/{arx_id}"
     identifier = authors[0].split(' ')[-1].lower() + year  # eg: graves2014
 
+    # get kw from semscholar
+    keywords = ss_keyword_query(arx_id)
+
     # map info
     # --------
-    info = dict(year=year, author=authors, abstract=abstract, title=title,
-                url=url, urlPDF=url_pdf, arxivId=arx_id, identifier=identifier)
+    info = OrderedDict(identifier=identifier, year=year, title=title,
+                       author=authors, arxivId=arx_id, url=url, urlPDF=url_pdf,
+                       keywords=keywords, abstract=abstract)
     return info
 
 #-----------------------------------------------------------------------------#
 #                           Semantic scholar (doi)                            #
 #-----------------------------------------------------------------------------#
-
-
-
 def semscholar_query(doi):
     #'https://api.semanticscholar.org/v1/paper/'
     req_url = f"{SS_API_URL}{doi}"
@@ -68,15 +76,18 @@ def semscholar_query(doi):
     return result
 
 def parse_ss(res):
-    info = {}
+    info = OrderedDict()
     # Get all relevant info
     # ---------------------
-    info['year']       = str(res['year'])
-    info['author']     = [auth['name'] for auth in res['authors']]
-    info['identifier'] = info['author'][0].split(' ')[-1].lower() + info['year']
-    info['title']      = res['title']
-    info['doi']        = res['doi']
-    info['keywords']   = [topic['topic'] for topic in res['topics']]
+    year       = str(res['year'])
+    author     = [auth['name'] for auth in res['authors']]
+    identifier = author[0].split(' ')[-1].lower() + year
+    title      = res['title']
+    doi        = res['doi']
+    keywords   = [topic['topic'] for topic in res['topics']]
+
+    info = OrderedDict(identifier=identifier, year=year, title=title,
+                       author=author, keywords=keywords, doi=doi)
 
     # URL interpret
     # -------------
@@ -113,14 +124,10 @@ def sscholarq(doi):
     pub_info = parse_ss(res)
     return pub_info
 
-def query(pub_id, bib=True):
+def query(pub_id):
     sid = scrub_arx_id(pub_id)
     info = arxq(sid) if is_arxiv_id(sid) else sscholarq(pub_id)
     info['filename'] = format_filename(info)
-    if bib:
-        bib = make_bib(info)
-        print(bib)
-        pyperclip.copy(bib)
     return info
 
 doi_samp = "10.1038/nature16961"

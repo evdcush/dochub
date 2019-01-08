@@ -1,7 +1,8 @@
+import os
 import code
-from utils import is_arxiv_id, scrub_arx_id
-from conf import NOTES_PATH, LIT_PATH
 from collections import OrderedDict
+from utils import is_arxiv_id, scrub_arx_id, NOTES_PATH, LIT_PATH, LIT_BIB
+
 
 #-----------------------------------------------------------------------------#
 #                                Bibliography                                 #
@@ -27,26 +28,16 @@ def format_abstract(abstract):
 
 
 def format_arx_info(info_in):
-    arx_key_order = ['identifier', 'year', 'author', 'title',
-                     'arxivId', 'url', 'urlPDF', 'abstract']
-    info = OrderedDict()
-    for k in arx_key_order:
-        info[k] = info_in[k]
-    #info = {**info_in}  # copy
+    info = OrderedDict(**info_in)
     # Convert collections to string
+    info['keywords'] = format_collection(info['keywords'])
     info['abstract'] = format_abstract(info['abstract'])
-    info['author']    = format_collection(info['author'])
+    info['author']   = format_collection(info['author'])
     return info
 
 
 def format_doi_info(info_in):
-    doi_key_order = ['identifier', 'year', 'author', 'title', 'doi',
-                     'arxivId', 'url', 'urlPDF', 'keywords', 'abstract']
-    info = OrderedDict()
-    for k in doi_key_order:
-        if k in info_in:
-            info[k] = info_in[k]
-
+    info = OrderedDict(**info_in)
     info['author']   = format_collection(info['author'])
     info['keywords'] = format_collection(info['keywords'])
     if 'abstract' in info:
@@ -64,8 +55,12 @@ def make_bib(info_in):
         if k == 'identifier': continue
         arxline = k.ljust(LEFT_MARGIN) + '= "' + v + ENDLINE
         bib += arxline
-    bib += '}'
+    bib += '}\n'
     return bib
+
+def write_to_bib(bib_entry, bib_file=LIT_BIB):
+    with open(LIT_BIB, 'a') as bib:
+        bib.write(bib_entry)
 
 #-----------------------------------------------------------------------------#
 #                                    Notes                                    #
@@ -76,7 +71,7 @@ def make_bib(info_in):
 # ======
 _N = '\n'
 _META = ".. meta::"
-_KEYWORDS = "    :keywords: "
+_KEYWORDS = "    :keywords:"
 _ARX_SUB = ":arXiv_link: |arXivID|_"
 _LOCAL_SUB = ":local_pdf: paper_"
 #_OTHER_LINK = ":paper_link: |paper_title|_"
@@ -149,6 +144,7 @@ class Document:
         return abstract
 
     def generate_notes(self):
+        assert not os.path.exists(self.filename) # don't overwrite notes
         # get content of interest
         info = self.info
         title   = info['title']
@@ -169,7 +165,8 @@ class Document:
         wr(_N)
         wr(line(title, 0))
         #wr(line(authors, 1))
-        wr(f"\n **{authors}**")
+        wr("\n| **Author:**")
+        wr(f"| {authors}")
         wr(_N)
         wr(SHORT + '\n')
         wr(ABS.format(abstract))
@@ -178,8 +175,9 @@ class Document:
         wr(line('Additional Notes', 3))
         wr(_N)
         wr(line('Reference', 2))
-        wr(f" - publication ID: {pub_id}")
-        wr(f" - `paper link <{url}>`_")
-        wr(f" - `pdf file <{LIT_PATH + '/' + info['filename'] + '.pdf'}>`_")
+        wr(f":year: {year}")
+        wr(f":publication ID: {pub_id}")
+        wr(f":link: {url}")
+        #wr(f":pdf file: `local file <{LIT_PATH + '/' + info['filename'] + '.pdf'}>`_")
         wr(_N)
         file.close()

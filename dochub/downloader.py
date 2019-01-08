@@ -20,8 +20,7 @@ from lxml import html
 from lxml.etree import ParserError
 from urllib.request import urlretrieve
 
-from utils import scrub_arx_id
-from conf import ARX_PDF_URL
+from utils import scrub_arx_id, ARX_PDF_URL
 
 #-----------------------------------------------------------------------------#
 #                                     doi                                     #
@@ -111,10 +110,6 @@ def arx_download(url, fname=None):
 #-----------------------------------------------------------------------------#
 #                                    Main                                     #
 #-----------------------------------------------------------------------------#
-sample_arx = '1706.03762'
-sample_doi = '10.1038/nature16961'
-sample_doi_whale = '10.1016/j.advengsoft.2016.01.008'
-
 def download(pub_id, fname):
     sid = scrub_arx_id(pub_id)
     if len(sid.split('.')[0]) == 4:
@@ -122,9 +117,3 @@ def download(pub_id, fname):
         arx_download(sid, fname)
     else:
         doi_download(pub_id, fname)
-
-if __name__ == '__main__':
-    pub_id = sys.argv[1]
-    download(pub_id)
-
-
