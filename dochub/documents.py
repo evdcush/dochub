@@ -4,63 +4,62 @@ from collections import OrderedDict
 from utils import is_arxiv_id, scrub_arx_id, NOTES_PATH, LIT_PATH, LIT_BIB
 
 
+
 #-----------------------------------------------------------------------------#
 #                                Bibliography                                 #
 #-----------------------------------------------------------------------------#
-LEFT_MARGIN = 9
-ENDLINE = '\",\n'
-MARGIN_JUST = "\n".ljust(len('"abstract = "'))
+class BibtexEntry:
+    """ currently only supporting articles """
+    endline = '},\n'
+    elem_per_line = 5
+    def __init__(self, info):
+        self.margin = len(max(info, key=len)) - 1
+        self.cont_margin = '\n'.ljust(self.margin + 4) # for clean align with prev line char
+        self.info = OrderedDict(**info) # make copy
+        self.create()
 
-def format_collection(lst):
-    string = ""
-    for i, entry in enumerate(lst):
-        if (i+1) % 5 == 0:
-            string += MARGIN_JUST + entry
-        else:
-            string += entry
-        if entry != lst[-1]:
-            string += ', '
-    return string
+    def format_abstract(self):
+        if 'abstract' in self.info:
+            abstract = self.info['abstract'].split('\n')
+            self.info['abstract'] = self.cont_margin.join(abstract)
 
-def format_abstract(abstract):
-    fmat_abs = MARGIN_JUST.join(abstract.split('\n'))
-    return fmat_abs
+    def format_collection(self, key):
+        val = self.info[key]
+        last = len(val) - 1
+        new_val = ''
+        for i, elem in enumerate(val):
+            if (i+1) % self.elem_per_line == 0:
+                new_val += self.cont_margin
+            new_val += elem
+            if i != last:
+                new_val += ', '
+        self.info[key] = new_val
+
+    def create(self):
+        # create full bibtex citation
+        bibtex = "@Article{" + self.info['identifier'] + '\n'
+        self.format_abstract()
+        for k, val in self.info.items():
+            if k == 'identifier': continue
+            if not isinstance(val, str):
+                self.format_collection(k)
+                val = self.info[k]
+            key = k.ljust(self.margin) + '= {'
+            bibtex += key + val + self.endline
+        self.bibtex = bibtex + '}\n'
+
+    def copy_to_clip(self):
+        import pyperclip
+        pyperclip.copy(self.bibtex)
 
 
-def format_arx_info(info_in):
-    info = OrderedDict(**info_in)
-    # Convert collections to string
-    info['keywords'] = format_collection(info['keywords'])
-    info['abstract'] = format_abstract(info['abstract'])
-    info['author']   = format_collection(info['author'])
-    return info
+    # may want to make this static, so can add clipped citations ez
+    def write_to_bibliography(self, file=LIT_BIB):
+        # create in init so impossible have instance without 'bibtex'
+        #assert hasattr(self, 'bibtex')
+        with open(file, 'a') as bib:
+            bib.write(self.bibtex)
 
-
-def format_doi_info(info_in):
-    info = OrderedDict(**info_in)
-    info['author']   = format_collection(info['author'])
-    info['keywords'] = format_collection(info['keywords'])
-    if 'abstract' in info:
-        info['abstract'] = format_abstract(info['abstract'])
-    return info
-
-
-def make_bib(info_in):
-    if 'doi' in info_in:
-        info = format_doi_info(info_in)
-    else:
-        info = format_arx_info(info_in)
-    bib = "@Article{" + info['identifier'] + '\n'
-    for k, v in info.items():
-        if k == 'identifier': continue
-        arxline = k.ljust(LEFT_MARGIN) + '= "' + v + ENDLINE
-        bib += arxline
-    bib += '}\n'
-    return bib
-
-def write_to_bib(bib_entry, bib_file=LIT_BIB):
-    with open(LIT_BIB, 'a') as bib:
-        bib.write(bib_entry)
 
 #-----------------------------------------------------------------------------#
 #                                    Notes                                    #
@@ -69,7 +68,8 @@ def write_to_bib(bib_entry, bib_file=LIT_BIB):
 
 # Static
 # ======
-_N = '\n'
+_N   = '\n'
+_TAB = '\n    ' # spaces rule, tabs drool
 _META = ".. meta::"
 _KEYWORDS = "    :keywords:"
 _ARX_SUB = ":arXiv_link: |arXivID|_"
@@ -78,8 +78,8 @@ _LOCAL_SUB = ":local_pdf: paper_"
 
 # Interpreted
 # ===========
-SHORT = "\n.. rubric:: **一言でいうと:**"
-ABS = "\n.. admonition:: Abstract\n\n    {}\n"
+ONELINER = "\n.. rubric:: **一言でいうと:**"
+ABS      = "\n.. admonition:: Abstract\n\n    {}\n"
 
 # substitutions
 ARX_ID   = ".. |arXivID| replace:: {}" # arXiv ID
@@ -127,6 +127,7 @@ class Line:
 
 # WIP
 class Document:
+    tab = '\n    '
     def __init__(self, info, path=NOTES_PATH):
         self.info = info
         self.filename = f"{path}/{info['filename']}.rst"
@@ -138,9 +139,9 @@ class Document:
         return kw
 
     def format_abs(self):
-        abstract = 'NONE'
+        abstract = '(Unavailable)'
         if 'abstract' in self.info:
-            abstract = '\n    '.join(self.info['abstract'].split('\n'))
+            abstract = _TAB.join(self.info['abstract'].split('\n'))
         return abstract
 
     def generate_notes(self):
@@ -152,23 +153,23 @@ class Document:
         year    = info['year']
         url     = info['url']
         keywords = self.format_keywords()
-        #abstract = info.get('abstract', 'No Abstract')
         abstract = self.format_abs()
-        pub_id   = info['arxivId'] if 'arxivId' in info else info['doi']
+        eprint   = info['arxivId'] if 'arxivId' in info else info['doi']
 
         # write file
         line = Line()
         file = open(self.filename, 'w')
         wr = lambda s: file.write(s + '\n')
+        #==== Header: keywords, title, authors
         wr(_META)
         wr(f"{_KEYWORDS} {keywords}")
         wr(_N)
         wr(line(title, 0))
-        #wr(line(authors, 1))
         wr("\n| **Author:**")
         wr(f"| {authors}")
         wr(_N)
-        wr(SHORT + '\n')
+        #==== Body: <oneliner>, abstract, <notes area>, year, eprint, url
+        wr(ONELINER + '\n')
         wr(ABS.format(abstract))
         wr(line('Key Points', 2))
         wr(_N)
@@ -176,8 +177,7 @@ class Document:
         wr(_N)
         wr(line('Reference', 2))
         wr(f":year: {year}")
-        wr(f":publication ID: {pub_id}")
+        wr(f":eprint: {eprint}")
         wr(f":link: {url}")
-        #wr(f":pdf file: `local file <{LIT_PATH + '/' + info['filename'] + '.pdf'}>`_")
         wr(_N)
         file.close()

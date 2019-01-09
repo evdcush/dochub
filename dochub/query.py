@@ -9,6 +9,9 @@ from slugify import slugify
 from utils import SS_API_URL, ARX_API_URL, DOI_URL, scrub_arx_id, is_arxiv_id
 
 
+def format_filename(identifier, title):
+    fname = identifier + '_' + slugify(title)
+    return fname
 
 #-----------------------------------------------------------------------------#
 #                                    Arxiv                                    #
@@ -17,9 +20,12 @@ def ss_keyword_query(arx_id):
     #'https://api.semanticscholar.org/v1/paper/'
     req_url = f"{SS_API_URL}arXiv:{arx_id}"
     response = requests.get(req_url)
-    result = response.json()
-    kw = [topic['topic'] for topic in result['topics']]
-    return kw
+    if response.status_code == 200:
+        result = response.json()
+        kw = [topic['topic'] for topic in result['topics']]
+        return kw
+    else:
+        return None
 
 # Querying
 # ========
@@ -54,15 +60,18 @@ def parse_arx(res):
     arx_id  = url.split('/')[-1]
     url_pdf = f"http://arxiv.org/pdf/{arx_id}"
     identifier = authors[0].split(' ')[-1].lower() + year  # eg: graves2014
-
-    # get kw from semscholar
-    keywords = ss_keyword_query(arx_id)
+    filename   = format_filename(identifier, title)
 
     # map info
     # --------
     info = OrderedDict(identifier=identifier, year=year, title=title,
                        author=authors, arxivId=arx_id, url=url, urlPDF=url_pdf,
-                       keywords=keywords, abstract=abstract)
+                       filename=filename, abstract=abstract)
+
+    # get kw from semscholar
+    keywords = ss_keyword_query(arx_id)
+    if keywords:
+        info['keywords'] = keywords
     return info
 
 #-----------------------------------------------------------------------------#
@@ -85,9 +94,10 @@ def parse_ss(res):
     title      = res['title']
     doi        = res['doi']
     keywords   = [topic['topic'] for topic in res['topics']]
+    filename   = format_filename(identifier, title)
 
     info = OrderedDict(identifier=identifier, year=year, title=title,
-                       author=author, keywords=keywords, doi=doi)
+                       author=author, doi=doi, keywords=keywords, filename=filename)
 
     # URL interpret
     # -------------
@@ -105,10 +115,7 @@ def parse_ss(res):
         info['url'] = DOI_URL + res['doi']
     return info
 
-def format_filename(info):
-    #code.interact(local=dict(globals(), **locals()))
-    fname = info['identifier'] + '__' + slugify(info['title'])
-    return fname
+
 
 #-----------------------------------------------------------------------------#
 #                                  Wrappers                                   #
@@ -127,7 +134,6 @@ def sscholarq(doi):
 def query(pub_id):
     sid = scrub_arx_id(pub_id)
     info = arxq(sid) if is_arxiv_id(sid) else sscholarq(pub_id)
-    info['filename'] = format_filename(info)
     return info
 
 doi_samp = "10.1038/nature16961"
