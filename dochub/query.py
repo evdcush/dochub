@@ -3,20 +3,39 @@ import code
 import fire
 import requests
 import pyperclip
-import feedparser
-from slugify import slugify
+#import feedparser
+import utils
+from utils import SS_API_URL, ARX_API_URL, DOI_URL
 
-from utils import SS_API_URL, ARX_API_URL, DOI_URL, scrub_arx_id, is_arxiv_id
+"""
+ISSUE: Having two different APIs in the same query file is confusing
+SMELLS: arxiv queries use both arxiv API and SS API (for keywords), but
+        SS queries only use SS
+SOLUTION: Only use SS API
+EXCUSE: SS does not provide abstracts, arxiv does
+
+"""
+
+INFO_KEYS = ['identifier', 'year', 'month', 'title', 'author', 'arxivId',
+             'doi', 'url', 'urlPDF', 'filename', 'keywords', 'abstract']
+
+def ss_arx_query(ref_id):
+    arx_id = utils.scrub_arx_id(ref_id)
+    req_url = f"{SS_API_URL}arXiv:{arx_id}?include_unknown_references=true"
+    response = requests.get(req_url)
+    if response.status_code == 200:
+        result = response.json()
+        return result
+    return None
 
 
-def format_filename(identifier, title):
-    fname = identifier + '_' + slugify(title)
-    return fname
 
 #-----------------------------------------------------------------------------#
 #                                    Arxiv                                    #
 #-----------------------------------------------------------------------------#
 def ss_keyword_query(arx_id):
+    """
+    """
     #'https://api.semanticscholar.org/v1/paper/'
     req_url = f"{SS_API_URL}arXiv:{arx_id}"
     response = requests.get(req_url)
@@ -30,7 +49,8 @@ def ss_keyword_query(arx_id):
 # Querying
 # ========
 def arx_query(raw_arx_id):
-    arx_id = scrub_arx_id(raw_arx_id)
+    import feedparser
+    arx_id = utils.scrub_arx_id(raw_arx_id)
     query_url = f"{ARX_API_URL}{arx_id}"
 
     # Query arxiv API
@@ -60,7 +80,7 @@ def parse_arx(res):
     arx_id  = url.split('/')[-1]
     url_pdf = f"http://arxiv.org/pdf/{arx_id}"
     identifier = authors[0].split(' ')[-1].lower() + year  # eg: graves2014
-    filename   = format_filename(identifier, title)
+    filename   = utils.format_filename(identifier, title)
 
     # map info
     # --------
@@ -94,7 +114,7 @@ def parse_ss(res):
     title      = res['title']
     doi        = res['doi']
     keywords   = [topic['topic'] for topic in res['topics']]
-    filename   = format_filename(identifier, title)
+    filename   = utils.format_filename(identifier, title)
 
     info = OrderedDict(identifier=identifier, year=year, title=title,
                        author=author, doi=doi, keywords=keywords, filename=filename)
@@ -116,7 +136,6 @@ def parse_ss(res):
     return info
 
 
-
 #-----------------------------------------------------------------------------#
 #                                  Wrappers                                   #
 #-----------------------------------------------------------------------------#
@@ -132,8 +151,8 @@ def sscholarq(doi):
     return pub_info
 
 def query(pub_id):
-    sid = scrub_arx_id(pub_id)
-    info = arxq(sid) if is_arxiv_id(sid) else sscholarq(pub_id)
+    sid = utils.scrub_arx_id(pub_id)
+    info = arxq(sid) if utils.is_arxiv_id(sid) else sscholarq(pub_id)
     return info
 
 doi_samp = "10.1038/nature16961"

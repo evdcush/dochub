@@ -8,15 +8,14 @@ from utils import LIT_PATH
 
 file_exists = lambda fpath: os.path.exists(fpath)
 
-
 def get_paper(pub_id, download=True):
     #=== query
     info = query.query(pub_id)
 
     #=== bib
-    bib = documents.make_bib(info)
-    print(bib)
-    pyperclip.copy(bib)
+    bib = documents.BibtexEntry(info)
+    print(bib.bibtex)
+    bib.copy_to_clip()
 
     #=== download
     paper_filename = f"{LIT_PATH}/{info['filename']}.pdf"
