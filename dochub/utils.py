@@ -78,6 +78,9 @@ def slug_title(title):
     return slug
 
 def format_filename(identifier, title):
+    """ filenames are formatted as: lastnameYEAR--This_is_the_Paper_Title
+    eg: vaswani2017--Attention_Is_All_You_Need
+    """
     fname = identifier + '--' + slug_title(title)
     return fname
 
