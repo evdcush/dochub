@@ -15,9 +15,9 @@ NOTES_PATH = f"{PROJECT_ROOT}/Notes"
 # File paths
 # ----------
 LIT_INBOX = f"{LIT_PATH}/inbox.txt"
-LIT_BIB   = f"{LIT_PATH}/library.bib"
+LIT_BIBTEX = f"{LIT_PATH}/library.bib"
 # including a yaml bib until I get bibtex parsing stuff dialed in
-LIT_ARCHIVE = f"{LIT_PATH}/archive.yml"
+LIT_BIBYML = f"{LIT_PATH}/library.yml"
 DOC_LOG = f"{_DOCHUB_PATH}/doc.log" # record of use
 
 

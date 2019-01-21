@@ -1,26 +1,12 @@
 from collections import OrderedDict
 import code
-import fire
 import slugify
 import requests
-import pyperclip
 #import feedparser
 import utils
 from utils import SS_API_URL, ARX_API_URL, DOI_URL, INFO_KEYS
 
 
-"""
-# Regardless of whether arxiv id given, you query SS
-So:
-doi --> ss_query
-arx --> ss_query & arxiv_query
-
-Query is kind of a bizarre amalgam of a class
-Ideally you should separate the arxiv and semantic scholar stuff,
-but the arxiv API query is only a supplementary feature, whereas SS is
-always queried.
-
-"""
 class Query:
     ss_api_url  = "https://api.semanticscholar.org/v1/paper/"
     arx_api_url = "http://export.arxiv.org/api/query?id_list="
@@ -82,16 +68,19 @@ class Query:
         """
         #==== Query API
         response = requests.get(self.url_ss)
-        if response.status_code == 200:
-            for attribute, value in response.json().items():
-                setattr(self, attribute, value)
-        else:
-            raise Exception(f"  {response.status_code}: HTTP error\n"
+        status_code = response.status_code
+        if status_code != 200:
+            raise Exception(f"  {status_code}: HTTP error\n"
                             f"  ref id: {self.ref_id}")
+        for attribute, value in response.json().items():
+                setattr(self, attribute, value)
+
 
     def query_arxiv(self):
-        """ Only abstract is needed from arxiv API,
-        everything else can be obtained from the SS API
+        """ Retrieves publication info of interest
+        If the arxiv paper is available on SS (ie, the SS query was successful),
+        this function only extracts the abstract from the arxiv API,
+        and uses the info from SS for everything else
         """
         import feedparser
         # Query arxiv API
@@ -100,10 +89,20 @@ class Query:
 
         # Process response
         # ----------------
-        if response.get('status') != 200:
+        status_code = response.get('status')
+        if status_code != 200:
             raise Exception(f"  {response.get('status')}: HTTP error\n"
                             f"  ref id: {self.ref_id}")
-        self.abstract = response['entries'][0].get('summary', 'Unavailable')
+        response = response['entries'][0]
+        self.abstract = response.get('summary', 'Unavailable')
+
+        # If SS query unsuccessful
+        if not hasattr(self, 'year'):
+            self.year     = response['published'][:4]  # eg: '2017-06-12T17...'
+            self.authors  = response['authors']
+            self.title    = response['title']
+            self.url      = f"{self.arx_tdn_url}/abs/{self.arxivId}"
+
 
     def process_response(self):
         """ cherry pick and format data of interest from API response
@@ -111,17 +110,16 @@ class Query:
         extract only the values of interest into a list
         (eg, the author names, and not their SS author IDs)
         """
-        assert hasattr(self, 'title') # ensure parse only called after query
+        assert hasattr(self, 'year') # ensure parse only called after query
 
         # Interpreted attributes
         # ----------------------
-        self.identifier = f"{self.authors[0]['name'].split(' ')[-1].lower()}{self.year}"
+        author_lname = self.authors[0]['name'].split(' ')[-1].lower()
+        self.identifier = f"{author_lname}{self.year}"
         self.filename = utils.format_filename(self.identifier, self.title)
         self.authors  = [author['name'] for author in self.authors]
         if hasattr(self, 'topics'):
             self.keywords = [slugify.slugify(kw['topic']) for kw in self.topics]
-        if hasattr(self, 'arxivId'):
-            self.url = [f"{self.arx_tdn_url}/abs/{self.arxivId}", self.url]
 
         # Processed response attr
         self.info = OrderedDict()
@@ -130,8 +128,11 @@ class Query:
                 self.info[key] = getattr(self, key)
 
     def query(self):
-        self.query_semantic_scholar()
-        if hasattr(self, 'url_arx'):
+        try:
+            self.query_semantic_scholar()
+            if hasattr(self, 'url_arx'):
+                self.query_arxiv()
+        except:
             self.query_arxiv()
         self.process_response()
         return self.info
