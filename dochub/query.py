@@ -73,6 +73,7 @@ class Query:
             raise Exception(f"  {status_code}: HTTP error\n"
                             f"  ref id: {self.ref_id}")
         for attribute, value in response.json().items():
+            if value is not None:
                 setattr(self, attribute, value)
 
 
@@ -115,6 +116,7 @@ class Query:
         # Interpreted attributes
         # ----------------------
         author_lname = self.authors[0]['name'].split(' ')[-1].lower()
+        self.year = str(self.year)
         self.identifier = f"{author_lname}{self.year}"
         self.filename = utils.format_filename(self.identifier, self.title)
         self.authors  = [author['name'] for author in self.authors]
@@ -133,7 +135,11 @@ class Query:
             if hasattr(self, 'url_arx'):
                 self.query_arxiv()
         except:
-            self.query_arxiv()
+            # Not arxiv ---> doi was invalid
+            if not hasattr(self, 'url_arx'):
+                raise Exception('Refence ID is neither valid DOI or arxiv ID')
+            else:
+                self.query_arxiv() # will raise exception if invalid arxiv
         self.process_response()
         return self.info
 

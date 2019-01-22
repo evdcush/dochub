@@ -9,15 +9,15 @@ from slugify import slugify
 # ===============
 _DOCHUB_PATH = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = "/".join(_DOCHUB_PATH.split('/')[:-1])
-LIT_PATH   = f"{PROJECT_ROOT}/Literature"
-NOTES_PATH = f"{PROJECT_ROOT}/Notes"
+PATH_LIT   = f"{PROJECT_ROOT}/Literature"
+PATH_NOTES = f"{PROJECT_ROOT}/Notes"
 
 # File paths
 # ----------
-LIT_INBOX = f"{LIT_PATH}/inbox.txt"
-LIT_BIBTEX = f"{LIT_PATH}/library.bib"
+LIT_INBOX = f"{PATH_LIT}/inbox.txt"
+LIT_BIBTEX = f"{PATH_LIT}/library.bib"
 # including a yaml bib until I get bibtex parsing stuff dialed in
-LIT_BIBYML = f"{LIT_PATH}/library.yml"
+LIT_BIBYML = f"{PATH_LIT}/library.yml"
 DOC_LOG = f"{_DOCHUB_PATH}/doc.log" # record of use
 
 
@@ -83,6 +83,18 @@ def format_filename(identifier, title):
     """
     fname = identifier + '--' + slug_title(title)
     return fname
+
+def read_inbox_file(inbox_file=LIT_INBOX, clear_inbox=True):
+    with open(inbox_file) as ibx:
+        ref_ids = ibx.read().split('\n')[1:]
+
+    # TODO
+    if clear_inbox:
+        pass
+
+    return ref_ids
+
+
 
 
 #-----------------------------------------------------------------------------#

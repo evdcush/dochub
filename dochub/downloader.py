@@ -20,7 +20,9 @@ from lxml import html
 from lxml.etree import ParserError
 from urllib.request import urlretrieve
 
-from utils import scrub_arx_id, ARX_PDF_URL
+from utils import ARX_PDF_URL
+
+scrub_arx_id = lambda u: u.strip('htps:/warxiv.orgbdf').split('v')[0]
 
 #-----------------------------------------------------------------------------#
 #                                     doi                                     #

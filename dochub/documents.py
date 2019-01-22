@@ -1,7 +1,7 @@
 import os
 import code
 from collections import OrderedDict
-from utils import is_arxiv_id, scrub_arx_id, NOTES_PATH, LIT_PATH, LIT_BIB
+from utils import PATH_NOTES, PATH_LIT, LIT_BIBTEX
 
 
 
@@ -54,7 +54,7 @@ class BibtexEntry:
 
 
     # may want to make this static, so can add clipped citations ez
-    def write_to_bibliography(self, file=LIT_BIB):
+    def write_to_bibliography(self, file=LIT_BIBTEX):
         # create in init so impossible have instance without 'bibtex'
         #assert hasattr(self, 'bibtex')
         with open(file, 'a') as bib:
@@ -128,7 +128,7 @@ class Line:
 # WIP
 class Document:
     tab = '\n    '
-    def __init__(self, info, path=NOTES_PATH):
+    def __init__(self, info, path=PATH_NOTES):
         self.info = info
         self.filename = f"{path}/{info['filename']}.rst"
 
@@ -149,7 +149,7 @@ class Document:
         # get content of interest
         info = self.info
         title   = info['title']
-        authors = ", ".join(info['author'])
+        authors = ", ".join(info['authors'])
         year    = info['year']
         url     = info['url']
         keywords = self.format_keywords()
@@ -165,7 +165,7 @@ class Document:
         wr(f"{_KEYWORDS} {keywords}")
         wr(_N)
         wr(line(title, 0))
-        wr("\n| **Author:**")
+        wr("\n| **Authors:**")
         wr(f"| {authors}")
         wr(_N)
         #==== Body: <oneliner>, abstract, <notes area>, year, eprint, url
