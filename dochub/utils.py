@@ -10,7 +10,8 @@ from slugify import slugify
 _DOCHUB_PATH = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = "/".join(_DOCHUB_PATH.split('/')[:-1])
 PATH_LIT   = f"{PROJECT_ROOT}/Literature"
-PATH_NOTES = f"{PROJECT_ROOT}/Notes"
+PATH_PAPERS = PATH_LIT + '/Papers'
+PATH_NOTES = f"{PROJECT_ROOT}/Notes/Inbox"
 
 # File paths
 # ----------
@@ -81,7 +82,7 @@ def format_filename(identifier, title):
     """ filenames are formatted as: lastnameYEAR--This_is_the_Paper_Title
     eg: vaswani2017--Attention_Is_All_You_Need
     """
-    fname = identifier + '--' + slug_title(title)
+    fname = identifier + '-' + slug_title(title)
     return fname
 
 def read_inbox_file(inbox_file=LIT_INBOX, clear_inbox=True):

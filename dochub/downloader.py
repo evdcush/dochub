@@ -28,14 +28,11 @@ scrub_arx_id = lambda u: u.strip('htps:/warxiv.orgbdf').split('v')[0]
 #                                     doi                                     #
 #-----------------------------------------------------------------------------#
 class LibGen:
-    def __init__(self,
-                 headers={},
-                 libgen_url="http://libgen.io/scimag/ads.php",
-                 xpath_pdf_url="/html/body/table/tr/td[3]/a"):
-        self.headers       = headers
-        self.libgen_url    = libgen_url
-        self.xpath_pdf_url = xpath_pdf_url
-        self.doi = None
+    libgen_url    = "http://libgen.io/scimag/ads.php"
+    xpath_pdf_url = "/html/body/table/tr/td[3]/a"
+    def __init__(self, headers={}):
+        self.headers = headers
+        #self.doi      = None
         self.pdf_file = None
         self.pdf_url  = None
         self.page_url = None
@@ -45,23 +42,23 @@ class LibGen:
 
     def navigate_to(self, doi, pdf_file):
         params = dict(doi=doi, downloadname='')
-        response = self.req_sess.get(
-            self.libgen_url,
-            params=params,
-            headers=self.headers
-        )
-        self.page_url = response.url
-        self.pdf_file = pdf_file
-        print(f"\n\tDOI: {doi}")
-        print(f"\tLibGen Link: {self.page_url}")
+        response = self.req_sess.get(self.libgen_url,
+                                     params=params,
+                                     headers=self.headers)
         status = response.status_code
         found = status == 200
         if not found:
             raise Exception(f'ERROR: libgen response status {status}')
+        self.page_url = response.url
+        self.pdf_file = pdf_file
+        print(f"\n\tDOI: {doi}")
+        print(f"\tLibGen Link: {self.page_url}")
         self.html_content = response.content
+        #code.interact(local=dict(globals(), **locals()))
 
     def generate_tree(self):
         try:
+            #code.interact(local=dict(globals(), **locals()))
             self.html_tree = html.fromstring(self.html_content)
             success = True
         except ParserError:

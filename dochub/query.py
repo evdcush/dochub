@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import code
-import slugify
+from slugify import slugify
 import requests
 #import feedparser
 import utils
@@ -8,6 +8,8 @@ from utils import SS_API_URL, ARX_API_URL, DOI_URL, INFO_KEYS
 
 
 class Query:
+    doi_url = "https://doi.org/"
+    crossref_api_url = "http://api.crossref.org/works/{}/transform/application/x-bibtex"
     ss_api_url  = "https://api.semanticscholar.org/v1/paper/"
     arx_api_url = "http://export.arxiv.org/api/query?id_list="
     arx_tdn_url = 'http://arxiv.org'
@@ -73,8 +75,19 @@ class Query:
             raise Exception(f"  {status_code}: HTTP error\n"
                             f"  ref id: {self.ref_id}")
         for attribute, value in response.json().items():
-            if value is not None:
+            #if value is not None:
+            if value:
                 setattr(self, attribute, value)
+
+        if hasattr(self, 'url'):
+            urls = [self.url]
+            if hasattr(self, 'arxivId'):
+                arx_url = f"{self.arx_tdn_url}/abs/{self.arxivId}"
+                urls.append(arx_url)
+            if hasattr(self, 'doi'):
+                doi_url = f"{self.doi_url}/{self.doi}"
+                urls.append(doi_url)
+            self.url = urls
 
 
     def query_arxiv(self):
@@ -86,6 +99,9 @@ class Query:
         import feedparser
         # Query arxiv API
         # ---------------
+        assert hasattr(self, 'arxivId') or hasattr(self, 'url_arx')
+        if not hasattr(self, 'url_arx'): # then has arxivId but not url
+            self.format_query(self.arxivId)
         response = feedparser.parse(self.url_arx)
 
         # Process response
@@ -98,12 +114,13 @@ class Query:
         self.abstract = response.get('summary', 'Unavailable')
 
         # If SS query unsuccessful
-        if not hasattr(self, 'year'):
-            self.year     = response['published'][:4]  # eg: '2017-06-12T17...'
-            self.authors  = response['authors']
-            self.title    = response['title']
-            self.url      = f"{self.arx_tdn_url}/abs/{self.arxivId}"
-
+        missing = lambda k: not hasattr(self, k)
+        if missing('year'):
+            self.year = response['published'][:4] # eg: '2017-06-12T17...'
+        if missing('authors'):
+            self.authors = response['authors']
+        if missing('title'):
+            self.title = response['title']
 
     def process_response(self):
         """ cherry pick and format data of interest from API response
@@ -115,13 +132,13 @@ class Query:
 
         # Interpreted attributes
         # ----------------------
-        author_lname = self.authors[0]['name'].split(' ')[-1].lower()
-        self.year = str(self.year)
-        self.identifier = f"{author_lname}{self.year}"
-        self.filename = utils.format_filename(self.identifier, self.title)
-        self.authors  = [author['name'] for author in self.authors]
+        lname = slugify(self.authors[0]['name'].split(' ')[-1], lowercase=False)
+        self.year       = str(self.year)
+        self.identifier = f"{lname}{self.year}"
+        self.filename   = utils.format_filename(self.identifier, self.title)
+        self.authors    = [author['name'] for author in self.authors]
         if hasattr(self, 'topics'):
-            self.keywords = [slugify.slugify(kw['topic']) for kw in self.topics]
+            self.keywords = [slugify(kw['topic']) for kw in self.topics]
 
         # Processed response attr
         self.info = OrderedDict()
@@ -132,17 +149,23 @@ class Query:
     def query(self):
         try:
             self.query_semantic_scholar()
-            if hasattr(self, 'url_arx'):
+            if hasattr(self, 'arxivId'):
                 self.query_arxiv()
         except:
             # Not arxiv ---> doi was invalid
             if not hasattr(self, 'url_arx'):
-                raise Exception('Refence ID is neither valid DOI or arxiv ID')
+                raise Exception('Refence ID lookup failed')
             else:
                 self.query_arxiv() # will raise exception if invalid arxiv
         self.process_response()
         return self.info
 
+""" TODO
+- currently, if the doi is not found in SS api, then the query fails.
+  However, there are other resources to get the citation info for that
+  doi, and you can still download, so need to integrate crossref api call
+
+"""
 
 
 

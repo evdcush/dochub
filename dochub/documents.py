@@ -1,7 +1,8 @@
 import os
 import code
 from collections import OrderedDict
-from utils import PATH_NOTES, PATH_LIT, LIT_BIBTEX
+import yaml
+from utils import PATH_NOTES, PATH_LIT, LIT_BIBTEX, LIT_BIBYML
 
 
 
@@ -13,8 +14,10 @@ class BibtexEntry:
     endline = '},\n'
     elem_per_line = 5
     def __init__(self, info):
+         # for clean align with prev line char
         self.margin = len(max(info, key=len)) - 1
-        self.cont_margin = '\n'.ljust(self.margin + 4) # for clean align with prev line char
+        self.cont_margin = '\n'.ljust(self.margin + 4)
+        self.raw_info = info # for yaml bib
         self.info = OrderedDict(**info) # make copy
         self.create()
 
@@ -24,6 +27,10 @@ class BibtexEntry:
             self.info['abstract'] = self.cont_margin.join(abstract)
 
     def format_collection(self, key):
+        if key == 'url':
+            joiner = f",{self.cont_margin}"
+            self.info[key] = joiner.join(self.info[key])
+            return
         val = self.info[key]
         last = len(val) - 1
         new_val = ''
@@ -48,19 +55,67 @@ class BibtexEntry:
             bibtex += key + val + self.endline
         self.bibtex = bibtex + '}\n'
 
+    def create_alt(self):
+        # create full bibtex citation
+        bibtex = "@article{" + self.info['identifier'] + '\n'
+        self.format_abstract()
+        for k, val in self.info.items():
+            if k == 'identifier': continue
+            if not isinstance(val, str):
+                self.format_collection(k)
+                val = self.info[k]
+            key = k.ljust(self.margin) + '= {'
+            bibtex += key + val + self.endline
+        self.bibtex = bibtex + '}\n'
+
     def copy_to_clip(self):
         import pyperclip
         pyperclip.copy(self.bibtex)
+
+    def write_yaml_bib(self):
+        """ WORRY ABOUT DUPS LATER """
+        identifier = self.raw_info['identifier']
+        title = self.raw_info['title']
+        #code.interact(local=dict(globals(), **locals()))
+        with open(LIT_BIBYML) as byml:
+            bib = yaml.load(byml)
+        # Check existing
+        if identifier in bib:
+            bib_entry = bib[identifier]
+        else:
+            bib_entry = dict()
+
+        entry = {}
+        for k, v in self.raw_info.items():
+            if k == 'identifier': continue
+            if k == 'abstract':
+                entry[k] = v.replace('\n', ' ')
+                continue
+            entry[k] = v
+
+        bib_entry[title] = entry
+
+        with open(LIT_BIBYML, 'w') as byml:
+            bib[identifier] = bib_entry
+            yaml.dump(bib, byml, default_flow_style=False)
+
+
+    def write_bibtex_bib(self):
+        with open(LIT_BIBTEX, 'a') as btex:
+            btex.write(self.bibtex + '\n')
 
 
     # may want to make this static, so can add clipped citations ez
     def write_to_bibliography(self, file=LIT_BIBTEX):
         # create in init so impossible have instance without 'bibtex'
         #assert hasattr(self, 'bibtex')
-        with open(file, 'a') as bib:
-            bib.write(self.bibtex)
+        self.write_yaml_bib()
+        self.write_bibtex_bib()
+        #with open(file, 'a') as bib: bib.write(self.bibtex)
 
-
+#def W_yml(fname, obj):
+#    with open(fname, 'w') as file:
+#        yaml.dump(obj, file, default_flow_style=False)
 #-----------------------------------------------------------------------------#
 #                                    Notes                                    #
 #-----------------------------------------------------------------------------#
@@ -151,7 +206,7 @@ class Document:
         title   = info['title']
         authors = ", ".join(info['authors'])
         year    = info['year']
-        url     = info['url']
+        url     = '\n    '.join(info['url'])
         keywords = self.format_keywords()
         abstract = self.format_abs()
         eprint   = info['arxivId'] if 'arxivId' in info else info['doi']
