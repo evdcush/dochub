@@ -1,121 +1,70 @@
 import os
 import code
 from collections import OrderedDict
+from pybtex.database import BibliographyData, Entry
 import yaml
 from utils import PATH_NOTES, PATH_LIT, LIT_BIBTEX, LIT_BIBYML
 
+#=============================================================================#
+#                                                                             #
+#                  I8,        8        ,8I  88  88888888ba                    #
+#                  `8b       d8b       d8'  88  88      "8b                   #
+#                   "8,     ,8"8,     ,8"   88  88      ,8P                   #
+#                    Y8     8P Y8     8P    88  88aaaaaa8P'                   #
+#                    `8b   d8' `8b   d8'    88  88""""""'                     #
+#                     `8a a8'   `8a a8'     88  88                            #
+#                      `8a8'     `8a8'      88  88                            #
+#                       `8'       `8'       88  88                            #
+#                                                                             #
+#=============================================================================#
+"""
+Overhauled query, made it simpler and independent
+now need to make functions for bibtex, that is actually valid bibtex
 
+"""
 
 #-----------------------------------------------------------------------------#
 #                                Bibliography                                 #
 #-----------------------------------------------------------------------------#
-class BibtexEntry:
-    """ currently only supporting articles """
-    endline = '},\n'
-    elem_per_line = 5
-    def __init__(self, info):
-         # for clean align with prev line char
-        self.margin = len(max(info, key=len)) - 1
-        self.cont_margin = '\n'.ljust(self.margin + 4)
-        self.raw_info = info # for yaml bib
-        self.info = OrderedDict(**info) # make copy
-        self.create()
+def make_bib_entry(info, style='bibtex'):
+    """ Makes a bibliography entry from the processed api info
 
-    def format_abstract(self):
-        if 'abstract' in self.info:
-            abstract = self.info['abstract'].split('\n')
-            self.info['abstract'] = self.cont_margin.join(abstract)
+    Uses pybtex to output a valid bibliography entry.
+    style='bibtex' --> "standard" bibtex format
+    style='yaml'   --> yaml format (easily convertible to bibtex)
 
-    def format_collection(self, key):
-        if key == 'url':
-            joiner = f",{self.cont_margin}"
-            self.info[key] = joiner.join(self.info[key])
-            return
-        val = self.info[key]
-        last = len(val) - 1
-        new_val = ''
-        for i, elem in enumerate(val):
-            if (i+1) % self.elem_per_line == 0:
-                new_val += self.cont_margin
-            new_val += elem
-            if i != last:
-                new_val += ', '
-        self.info[key] = new_val
+    """
+    # create instances
+    bib_entry = BibliographyData()
+    entry = Entry('article')
+    fields = type(entry.fields)() # pybtex.utils.OrderedCaseInsensitiveDict
 
-    def create(self):
-        # create full bibtex citation
-        bibtex = "@Article{" + self.info['identifier'] + '\n'
-        self.format_abstract()
-        for k, val in self.info.items():
-            if k == 'identifier': continue
-            if not isinstance(val, str):
-                self.format_collection(k)
-                val = self.info[k]
-            key = k.ljust(self.margin) + '= {'
-            bibtex += key + val + self.endline
-        self.bibtex = bibtex + '}\n'
+    # helper
+    def add_field(k):
+        if k in info:
+            v = info[k]
+            if isinstance(v, list):
+                v = ', '.join(v)
+            fields[k] = str(v)
 
-    def create_alt(self):
-        # create full bibtex citation
-        bibtex = "@article{" + self.info['identifier'] + '\n'
-        self.format_abstract()
-        for k, val in self.info.items():
-            if k == 'identifier': continue
-            if not isinstance(val, str):
-                self.format_collection(k)
-                val = self.info[k]
-            key = k.ljust(self.margin) + '= {'
-            bibtex += key + val + self.endline
-        self.bibtex = bibtex + '}\n'
+    #==== add fields
+    add_field('year')
+    add_field('title')
+    add_field('author')
+    add_field('arxivId')
+    add_field('DOI')
+    add_field('keywords')
+    add_field('abstract')
+    add_field('URL')
+    add_field('pdf')
+    add_field('filename')
 
-    def copy_to_clip(self):
-        import pyperclip
-        pyperclip.copy(self.bibtex)
+    #==== update instances
+    entry.fields = fields
+    bib_entry.add_entry(info.identifier, entry)
+    #return bib_entry.to_string('bibtex')
+    return bib_entry.to_string(style)
 
-    def write_yaml_bib(self):
-        """ WORRY ABOUT DUPS LATER """
-        identifier = self.raw_info['identifier']
-        title = self.raw_info['title']
-        #code.interact(local=dict(globals(), **locals()))
-        with open(LIT_BIBYML) as byml:
-            bib = yaml.load(byml)
-        # Check existing
-        if identifier in bib:
-            bib_entry = bib[identifier]
-        else:
-            bib_entry = dict()
-
-        entry = {}
-        for k, v in self.raw_info.items():
-            if k == 'identifier': continue
-            if k == 'abstract':
-                entry[k] = v.replace('\n', ' ')
-                continue
-            entry[k] = v
-
-        bib_entry[title] = entry
-
-        with open(LIT_BIBYML, 'w') as byml:
-            bib[identifier] = bib_entry
-            yaml.dump(bib, byml, default_flow_style=False)
-
-
-    def write_bibtex_bib(self):
-        with open(LIT_BIBTEX, 'a') as btex:
-            btex.write(self.bibtex + '\n')
-
-
-    # may want to make this static, so can add clipped citations ez
-    def write_to_bibliography(self, file=LIT_BIBTEX):
-        # create in init so impossible have instance without 'bibtex'
-        #assert hasattr(self, 'bibtex')
-        self.write_yaml_bib()
-        self.write_bibtex_bib()
-        #with open(file, 'a') as bib: bib.write(self.bibtex)
-
-#def W_yml(fname, obj):
-#    with open(fname, 'w') as file:
-#        yaml.dump(obj, file, default_flow_style=False)
 #-----------------------------------------------------------------------------#
 #                                    Notes                                    #
 #-----------------------------------------------------------------------------#
@@ -204,12 +153,12 @@ class Document:
         # get content of interest
         info = self.info
         title   = info['title']
-        authors = ", ".join(info['authors'])
+        authors = ", ".join(info['author'])
         year    = info['year']
-        url     = '\n    '.join(info['url'])
+        url     = '\n    '.join(info['URL'])
         keywords = self.format_keywords()
         abstract = self.format_abs()
-        eprint   = info['arxivId'] if 'arxivId' in info else info['doi']
+        eprint   = info['arxivId'] if 'arxivId' in info else info['DOI']
 
         # write file
         line = Line()

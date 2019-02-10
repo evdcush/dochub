@@ -28,7 +28,8 @@ scrub_arx_id = lambda u: u.strip('htps:/warxiv.orgbdf').split('v')[0]
 #                                     doi                                     #
 #-----------------------------------------------------------------------------#
 class LibGen:
-    libgen_url    = "http://libgen.io/scimag/ads.php"
+    #libgen_url    = "http://libgen.io/scimag/ads.php"
+    libgen_url    = "http://eteka.info/scimag/ads.php" # being redirected here
     xpath_pdf_url = "/html/body/table/tr/td[3]/a"
     def __init__(self, headers={}):
         self.headers = headers
