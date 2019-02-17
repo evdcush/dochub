@@ -63,7 +63,8 @@ def make_bib_entry(info, style='bibtex'):
     entry.fields = fields
     bib_entry.add_entry(info.identifier, entry)
     #return bib_entry.to_string('bibtex')
-    return bib_entry.to_string(style)
+    #return bib_entry.to_string(style)
+    return bib_entry.to_string(style).replace('\_', '_')
 
 #-----------------------------------------------------------------------------#
 #                                    Notes                                    #
@@ -155,7 +156,7 @@ class Document:
         title   = info['title']
         authors = ", ".join(info['author'])
         year    = info['year']
-        url     = '\n    '.join(info['URL'])
+        url     = info['URL']
         keywords = self.format_keywords()
         abstract = self.format_abs()
         eprint   = info['arxivId'] if 'arxivId' in info else info['DOI']

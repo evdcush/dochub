@@ -9,8 +9,7 @@ Downloading
 -----------
 Primary paper source is arXiv, and arXiv ids are always preferred over doi.
 Papers that are not published to arXiv are identified instead by their doi.
-Generally, doi papers are behind a journal paywall, so libgen is used.
-
+Generally, doi papers are behind a journal paywall, so libgen is provided.
 """
 
 import sys
@@ -30,7 +29,8 @@ scrub_arx_id = lambda u: u.strip('htps:/warxiv.orgbdf').split('v')[0]
 class LibGen:
     #libgen_url    = "http://libgen.io/scimag/ads.php"
     libgen_url    = "http://eteka.info/scimag/ads.php" # being redirected here
-    xpath_pdf_url = "/html/body/table/tr/td[3]/a"
+    #xpath_pdf_url = "/html/body/table/tr/td[3]/a" >>> self.html_tree.xpath(pt + '/td/a')[0]
+    xpath_pdf_url = "/html/body/table/tr/td/a"
     def __init__(self, headers={}):
         self.headers = headers
         #self.doi      = None
@@ -55,11 +55,9 @@ class LibGen:
         print(f"\n\tDOI: {doi}")
         print(f"\tLibGen Link: {self.page_url}")
         self.html_content = response.content
-        #code.interact(local=dict(globals(), **locals()))
 
     def generate_tree(self):
         try:
-            #code.interact(local=dict(globals(), **locals()))
             self.html_tree = html.fromstring(self.html_content)
             success = True
         except ParserError:
@@ -117,3 +115,11 @@ def download(pub_id, fname):
         arx_download(sid, fname)
     else:
         doi_download(pub_id, fname)
+
+def download_from_response(info, fname):
+    if 'pdf' in info:
+        urlretrieve(info.pdf, fname)
+    else:
+        libgen = LibGen()
+        libgen.download(info.DOI, fname)
+    print(f'  Downloaded {fname}')
