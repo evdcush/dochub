@@ -18,7 +18,7 @@ class AttrDict(dict):
 _DOCHUB_PATH = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = "/".join(_DOCHUB_PATH.split('/')[:-1])
 PATH_LIT   = f"{PROJECT_ROOT}/Literature"
-PATH_PAPERS = PATH_LIT + '/Papers'
+PATH_PAPERS = PATH_LIT + '/Library/Papers'
 PATH_NOTES = f"{PROJECT_ROOT}/Notes/Inbox"
 
 # File paths

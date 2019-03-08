@@ -60,6 +60,7 @@ queries are supported (multiple ids from input or file to be supported later).
 
 * Query SS api with input pub id (doi or arxiv)
   * if arxiv id, get abstract and paper link from arxiv API
+  * if SS fails on doi, check crossref
 * process response for primary data of interest:
   year, authors, title, keywords, pub id, abstract
 * return data processed into a dict
@@ -69,6 +70,7 @@ import sys
 import code
 import subprocess
 from typing import List, Set, Dict, Tuple, Optional
+
 import requests
 from unidecode import unidecode
 from slugify import slugify
@@ -80,12 +82,12 @@ from slugify import slugify
 # urls
 # ====
 doi_url = "http://doi.org/"
-ss_api_paper_url    = "https://api.semanticscholar.org/v1/paper/"
+ss_api_paper_url = "https://api.semanticscholar.org/v1/paper/"
+crossref_api_url = "http://api.crossref.org/works/"
 arxiv_api_paper_url = "http://export.arxiv.org/api/query?id_list="
-crossref_api_url    = "http://api.crossref.org/works/"
 
 class AttrDict(dict):
-    """ dict that has dot access """
+    """ dict that has dot access (cannot pickle) """
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
@@ -112,12 +114,20 @@ def check_status(status_code):
     if status_code != 200:
         raise ValueError(status_code)
 
-def check_url_exist(url): # for checking SS pdf
-    # -q : quiet
-    # --spider : checks
-    # --max-redict 0 : don't follow redirects (ss will redirect if no paper)
+def check_url_exist(url):
+    """ uses wget to check if a url exists
+    Only used currently for checking if SS has paper available
+
+    wget args
+    ---------
+    -q : quiet
+    --spider : don't download (just navigate to site)
+    --max-redirect 0 : don't follow redirects
+        ss will redirect if no paper
+    """
     shcmd = f'wget -q --spider --max-redirect 0 {url}'
     return subprocess.run(shcmd, shell=True).returncode == 0
+
 
 # Formatting
 # ==========
@@ -131,13 +141,16 @@ def extract_authors(response, crossref=False):
     "LINNÉA CLAESSON" would be formatted to "Linnea Claesson"
     (note the unicode 'É' is converted to ascii e, and name is titled)
     """
+    authors = []
+    format_name = lambda name: to_ascii(name).title()
     if crossref:
-        authors = []
         for author in response['author']:
-            name = to_ascii(f"{author['given']} {author['family']}").title()
+            name = format_name(f"{author['given']} {author['family']}")
             authors.append(name)
     else:
-        authors = [to_ascii(author['name']).title() for author in response['authors']]
+        for author in response['authors']:
+            name = format_name(author['name'])
+            authors.append(name)
     return authors
 
 

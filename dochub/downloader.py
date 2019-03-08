@@ -18,6 +18,8 @@ import requests
 from lxml import html
 from lxml.etree import ParserError
 from urllib.request import urlretrieve
+from urllib.parse import urlencode
+from urllib.error import HTTPError
 
 from utils import ARX_PDF_URL
 
@@ -26,11 +28,15 @@ scrub_arx_id = lambda u: u.strip('htps:/warxiv.orgbdf').split('v')[0]
 #-----------------------------------------------------------------------------#
 #                                     doi                                     #
 #-----------------------------------------------------------------------------#
+""" libgen urls change sometimes
+#http://booksdl.org/scimag/get.php?doi=10.1109%2FTETCI.2017.2769104&downloadname=
+"""
 class LibGen:
     #libgen_url    = "http://libgen.io/scimag/ads.php"
-    libgen_url    = "http://eteka.info/scimag/ads.php" # being redirected here
-    #xpath_pdf_url = "/html/body/table/tr/td[3]/a" >>> self.html_tree.xpath(pt + '/td/a')[0]
-    xpath_pdf_url = "/html/body/table/tr/td/a"
+    libgen_url = "http://booksdl.org/scimage/get.php"
+    #libgen_url    = "http://eteka.info/scimag/ads.php" # being redirected here
+    xpath_pdf_url = "/html/body/table/tr/td[3]/a"
+    #xpath_pdf_url = "/html/body/table/tr/td/a"
     def __init__(self, headers={}):
         self.headers = headers
         #self.doi      = None
@@ -54,6 +60,7 @@ class LibGen:
         self.pdf_file = pdf_file
         print(f"\n\tDOI: {doi}")
         print(f"\tLibGen Link: {self.page_url}")
+        code.interact(local=dict(globals(), **locals()))
         self.html_content = response.content
 
     def generate_tree(self):
@@ -81,12 +88,32 @@ class LibGen:
         self.get_pdf_url()
         urlretrieve(self.pdf_url, self.pdf_file)
 
+def doi_download(doi, fname):
+    """ dirty hack for libgen dls
+    the mirrors change so frequently I think it might just be easier
+    to change the hardcode
+    """
+    #=== encode
+    base = "http://booksdl.org/scimag/get.php?"
+    doidict = dict(doi=doi)
+    doi_enc = urlencode(doidict)
+    dl_url = base + doi_enc #+ '&downloadname='
 
-def doi_download(doi, fname=None):
-    libgen = LibGen()
-    if fname is None:
-        fname = f"{doi.replace('/', '_')}.pdf"
-    libgen.download(doi, fname)
+    #=== retrieve
+    try:
+        urlretrieve(dl_url, fname)
+    except HTTPError:
+        print(f"HTTPError on {dl_url}")
+
+
+
+
+
+#def doi_download(doi, fname=None):
+#    libgen = LibGen()
+#    if fname is None:
+#        fname = f"{doi.replace('/', '_')}.pdf"
+#    libgen.download(doi, fname)
 
 
 
@@ -120,6 +147,7 @@ def download_from_response(info, fname):
     if 'pdf' in info:
         urlretrieve(info.pdf, fname)
     else:
-        libgen = LibGen()
-        libgen.download(info.DOI, fname)
+        #libgen = LibGen()
+        #libgen.download(info.DOI, fname)
+        doi_download(info.DOI, fname)
     print(f'  Downloaded {fname}')
