@@ -5,18 +5,6 @@ from pybtex.database import BibliographyData, Entry
 import yaml
 from utils import PATH_NOTES, PATH_LIT, LIT_BIBTEX, LIT_BIBYML
 
-#=============================================================================#
-#                                                                             #
-#                  I8,        8        ,8I  88  88888888ba                    #
-#                  `8b       d8b       d8'  88  88      "8b                   #
-#                   "8,     ,8"8,     ,8"   88  88      ,8P                   #
-#                    Y8     8P Y8     8P    88  88aaaaaa8P'                   #
-#                    `8b   d8' `8b   d8'    88  88""""""'                     #
-#                     `8a a8'   `8a a8'     88  88                            #
-#                      `8a8'     `8a8'      88  88                            #
-#                       `8'       `8'       88  88                            #
-#                                                                             #
-#=============================================================================#
 """
 Overhauled query, made it simpler and independent
 now need to make functions for bibtex, that is actually valid bibtex

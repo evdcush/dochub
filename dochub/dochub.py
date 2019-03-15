@@ -3,11 +3,12 @@
 It's primary purpose is the acquisition and organization of papers given
 an ereference (arXiv ID or doi).
 
-DocHub uses the ArXiv and Semantic Scholar APIs to get citation information
-and download papers, and generates notes for a paper using a custom
-reStructuredText template.
+DocHub uses the ArXiv, Semantic Scholar, and CrossRef APIs to get citation
+information and download papers, and generates notes for a paper
+using a custom reStructuredText template.
 """
-import os, sys, code
+import os
+import sys
 import argparse
 import pyperclip
 
@@ -94,6 +95,8 @@ def get_link_from_clipboard():
 
 
 if __name__ == '__main__':
+    parser = utils.PARSER
+    parser.description = __doc__
     args = parser.parse_args()
     if args.ref_id is None:
         ref_id = get_link_from_clipboard()
