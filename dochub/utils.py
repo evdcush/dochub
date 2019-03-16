@@ -3,7 +3,6 @@ import sys
 import traceback
 import pyperclip
 from slugify import slugify
-#from query import query, get_citation_count
 import query
 
 class AttrDict(dict):
@@ -19,11 +18,14 @@ class AttrDict(dict):
 #-----------------------------------------------------------------------------#
 # Directory paths
 # ===============
+# base paths
 _DOCHUB_PATH = os.path.abspath(os.path.dirname(__file__))
 PROJECT_ROOT = "/".join(_DOCHUB_PATH.split('/')[:-1])
-PATH_LIT   = f"{PROJECT_ROOT}/Literature"
-PATH_PAPERS = PATH_LIT + '/Library/Papers'
-PATH_NOTES = f"{PROJECT_ROOT}/Notes/Inbox"
+
+# subdirs with content
+PATH_LIT    = f"{PROJECT_ROOT}/Literature"
+PATH_NOTES  = f"{PROJECT_ROOT}/Notes/Inbox"
+PATH_PAPERS = PATH_LIT + '/Library'
 
 # File paths
 # ----------
