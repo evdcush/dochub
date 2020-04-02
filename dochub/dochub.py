@@ -27,9 +27,6 @@ adg('ref_id', nargs='?', default=None,
 adg('-i', '--inbox', action='store_true',
     help='add the ref id to the inbox file')
 
-nih_path = '/home/evan/Projects/DocHub/Literature/nih_papers'
-tbadded = '/home/evan/papers_to_add'
-
 adg('-d', '--download', nargs='?', default=None, const=PATH_PAPERS, metavar='DPATH',
     help='download paper to default literature dir, or to dir at DPATH')
 
